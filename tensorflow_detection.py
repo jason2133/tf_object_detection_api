@@ -79,6 +79,53 @@ class DetectionObj(object):
         # TensorFlow Session 시작
         self.TF_SESSION = tf.Session(graph = self.DETECTION_GRAPH)
 
+def load_frozen_model(self):
+    # Ckpt 파일에 동결된 탐지 모델을 디스크에서 메모리로 적재
+
+    detection_graph = tf.Graph()
+    with detection_graph.as_default():
+        od_graph_def = tf.GraphDef()
+        with tf.gfile.GFile(self.CKPT_FILE, 'rb') as fid:
+            serialized_graph = fid.read()
+            od_graph_def.ParseFromString(serialized_graph)
+            tf.import_graph_def(od_graph_def, name='')
+    return detection_graph
+
+def download_frozen_model(self):
+    # 고정된 탐지 모델이 디스크에 없을 때 인터넷에서 내려받음
+    
+    def my_hook(t):
+        # URLopener를 모니터링하기 위해 tqdm 인스턴스를 감쌈
+        last_b = [0]
+
+        def inner(b=1, bsize = 1, tsize = None):
+            if tsize is not None:
+                t.total = tsize
+            t.update((b - last_b[0]) * bsize)
+            last_b[0] = b
+        
+        return inner
+
+    # 모델을 찾을 수 있는 URL 열기
+    model_filename = self.MODEL_NAME + '.tar.gz'
+    download_url = 'http://download.tensorflow.org/models/object_detection/'
+    opener = urllib.request.URLopener()
+
+    # tqdm 완료 추정을 사용해 모델 내려받기
+    print("Downloading ...")
+    with tqdm() as t:
+        opener.retrieve(download_url + model_filename, model_filename, reporthook = my_hook(t))
+
+    # 내려받은 tar 파일에서 모델 추출하기
+    print("Extracting ...")
+    tar_file = tarfile.open(model_filename)
+    for file in tar_file.getmembers():
+        file_name = os.path.basename(file.name)
+        if 'frozen_inference_graph.pb' in file_name:
+            tar_file.extract(file, os.path.join(self.CURRENT_PATH, 'object_detection'))
+
+    
+
 
 
 
